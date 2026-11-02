@@ -1,5 +1,7 @@
 # laravel-interop
 
+[![CI](https://github.com/Rene-Roscher/laravel-interop/actions/workflows/ci.yml/badge.svg)](https://github.com/Rene-Roscher/laravel-interop/actions/workflows/ci.yml)
+
 Expiring, scoped payloads on top of Laravel's encrypter. An **Interop Envelope** is a small JSON
 document with a scope, timestamps and data, encrypted with `Crypt::encryptString()`. Because the
 encryption authenticates it, neither the scope nor the timestamps can be changed without the app
