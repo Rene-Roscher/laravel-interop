@@ -7,7 +7,8 @@ declare(strict_types=1);
 // reach. The Rust, Go and Node.js packages copy this file and open each token; they also
 // re-encrypt each plaintext themselves and let bin/verify-tokens.php judge those tokens.
 
-require __DIR__.'/../vendor/autoload.php';
+// Works from this repository and from the vendor directory of a project that requires it.
+require is_file(__DIR__.'/../vendor/autoload.php') ? __DIR__.'/../vendor/autoload.php' : __DIR__.'/../../../autoload.php';
 
 use Illuminate\Encryption\Encrypter;
 
