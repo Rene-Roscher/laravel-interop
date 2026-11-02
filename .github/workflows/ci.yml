@@ -1,0 +1,118 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+    paths-ignore: ['**.md', 'LICENSE']
+  pull_request:
+    branches: [main, master]
+  schedule:
+    # The other packages change on their own; catch drift between them and this one.
+    - cron: '23 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (Laravel ${{ matrix.laravel }} / PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { laravel: '10', php: '8.2' }
+          - { laravel: '11', php: '8.3' }
+          - { laravel: '12', php: '8.3' }
+          - { laravel: '13', php: '8.4' }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: openssl, mbstring
+          tools: composer
+      - name: Install Laravel ${{ matrix.laravel }}
+        run: >
+          composer require --no-interaction --no-progress --with-all-dependencies
+          "illuminate/contracts:^${{ matrix.laravel }}.0"
+          "illuminate/encryption:^${{ matrix.laravel }}.0"
+          "illuminate/container:^${{ matrix.laravel }}.0"
+          "illuminate/support:^${{ matrix.laravel }}.0"
+      - run: vendor/bin/phpunit
+
+  vectors:
+    name: Vectors are up to date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: openssl, mbstring
+          tools: composer
+      - run: composer install --no-interaction --no-progress
+      # The tokens are random, so compare what the vectors say, not the tokens themselves.
+      - run: |
+          cp fixtures/envelope-vectors.json /tmp/committed.json
+          php bin/generate-vectors.php
+          php -r '
+            $strip = function ($f) { $j = json_decode(file_get_contents($f), true);
+              foreach ($j["vectors"] as &$v) { unset($v["token"]); } unset($j["laravel"]); return json_encode($j); };
+            exit($strip("/tmp/committed.json") === $strip("fixtures/envelope-vectors.json") ? 0 : 1);'
+
+  e2e:
+    name: End to end (Laravel ${{ matrix.laravel }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        laravel: ['10', '11', '12', '13']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: laravel-interop
+      - uses: actions/checkout@v4
+        with:
+          repository: Rene-Roscher/laravel-rust-encryption
+          path: laravel-rust-encryption
+      - uses: actions/checkout@v4
+        with:
+          repository: Rene-Roscher/laravel-go-encryption
+          path: laravel-go-encryption
+      - uses: actions/checkout@v4
+        with:
+          repository: Rene-Roscher/laravel-node-encryption
+          path: laravel-node-encryption
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: openssl, mbstring
+          tools: composer
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: laravel-rust-encryption
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: laravel-go-encryption/go.mod
+          cache-dependency-path: laravel-go-encryption/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Laravel ${{ matrix.laravel }}
+        working-directory: laravel-interop
+        run: >
+          composer require --no-interaction --no-progress --with-all-dependencies
+          "illuminate/contracts:^${{ matrix.laravel }}.0"
+          "illuminate/encryption:^${{ matrix.laravel }}.0"
+          "illuminate/container:^${{ matrix.laravel }}.0"
+          "illuminate/support:^${{ matrix.laravel }}.0"
+      - run: npm ci
+        working-directory: laravel-node-encryption
+
+      # Every implementation issues tokens and every implementation judges them.
+      - run: laravel-interop/e2e/run.sh
