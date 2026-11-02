@@ -117,8 +117,17 @@ final class EnvelopeTest extends TestCase
         $this->assertThrowsKind(EnvelopeExpired::class, fn () => $envelope->open($envelope->seal('s', 'x', Expiry::at(1)), 's'));
     }
 
+    private static function skipWithoutPreviousKeys(self $test): void
+    {
+        if (! method_exists(Encrypter::class, 'previousKeys')) {
+            $test->markTestSkipped('Laravel 10 has no previous keys.');
+        }
+    }
+
     public function test_the_previous_keys_of_the_encrypter_apply(): void
     {
+        self::skipWithoutPreviousKeys($this);
+
         $old = new Envelope(self::encrypter(byte: "\x7a"), static fn (): int => self::NOW);
         $token = $old->seal('s', 'legacy', Expiry::in(60));
 
@@ -176,9 +185,13 @@ final class EnvelopeTest extends TestCase
 
         // Tokens from the previous key are opened by an application that rotated its key.
         $encrypter = new Encrypter($current, $vector['cipher']);
-        $rotated = (new Encrypter($current, $vector['cipher']))->previousKeys([$previous]);
         $withoutPrevious = new Envelope($encrypter);
-        $envelope = new Envelope($vector['key'] === 'previous' ? $rotated : $encrypter);
+        if ($vector['key'] === 'previous') {
+            self::skipWithoutPreviousKeys($this);
+            $envelope = new Envelope((new Encrypter($current, $vector['cipher']))->previousKeys([$previous]));
+        } else {
+            $envelope = $withoutPrevious;
+        }
 
         $verdict = self::verdict($envelope, $vector);
         $this->assertSame($vector['expect'], $verdict['kind'], $vector['name']);
