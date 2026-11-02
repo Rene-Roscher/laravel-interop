@@ -1,0 +1,41 @@
+{
+    "name": "rene-roscher/laravel-interop",
+    "description": "Interop Envelope: expiring, scoped payloads on top of Laravel's encrypter, readable from Rust, Go and Node.js.",
+    "license": "MIT",
+    "authors": [
+        { "name": "René Roscher", "email": "roscher794@gmail.com" }
+    ],
+    "require": {
+        "php": ">=8.2",
+        "ext-json": "*",
+        "illuminate/contracts": "^10.0 || ^11.0 || ^12.0 || ^13.0"
+    },
+    "require-dev": {
+        "illuminate/container": "^10.0 || ^11.0 || ^12.0 || ^13.0",
+        "illuminate/encryption": "^10.0 || ^11.0 || ^12.0 || ^13.0",
+        "illuminate/support": "^10.0 || ^11.0 || ^12.0 || ^13.0",
+        "phpunit/phpunit": "^10.5 || ^11.0 || ^12.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "ReneRoscher\\Interop\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "ReneRoscher\\Interop\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "ReneRoscher\\Interop\\InteropServiceProvider"
+            ]
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    },
+    "minimum-stability": "stable"
+}
